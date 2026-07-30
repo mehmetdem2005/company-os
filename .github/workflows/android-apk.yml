@@ -30,9 +30,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat source/mobile.zip.b64.part* | base64 --decode > /tmp/company-os-mobile.zip
-          echo "Restored bytes: $(wc -c < /tmp/company-os-mobile.zip)"
-          echo "Restored SHA-256: $(sha256sum /tmp/company-os-mobile.zip | cut -d' ' -f1)"
+          cat \
+            source/mobile.zip.b64.part00 \
+            source/mobile.zip.b64.part01 \
+            source/mobile.zip.b64.part02a \
+            source/mobile.zip.b64.part02b \
+            source/mobile.zip.b64.part03 \
+            source/mobile.zip.b64.part04 \
+            source/mobile.zip.b64.part05 \
+            source/mobile.zip.b64.part06a \
+            source/mobile.zip.b64.part06b \
+            source/mobile.zip.b64.part07 \
+            source/mobile.zip.b64.part08 \
+            source/mobile.zip.b64.part09 \
+            source/mobile.zip.b64.part10 \
+            source/mobile.zip.b64.part11 \
+            | base64 --decode > /tmp/company-os-mobile.zip
+          echo "c72794030cc312fe8d6f8d01e5b021f6427b7200ba41b08ef7511508ddf2a8df  /tmp/company-os-mobile.zip" | sha256sum -c -
           unzip -t /tmp/company-os-mobile.zip
           unzip -q /tmp/company-os-mobile.zip
           test -f apps/mobile/package.json
