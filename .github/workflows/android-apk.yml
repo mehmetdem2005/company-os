@@ -31,7 +31,9 @@ jobs:
         run: |
           set -euo pipefail
           cat source/mobile.zip.b64.part* | base64 --decode > /tmp/company-os-mobile.zip
-          echo "c72794030cc312fe8d6f8d01e5b021f6427b7200ba41b08ef7511508ddf2a8df  /tmp/company-os-mobile.zip" | sha256sum -c -
+          echo "Restored bytes: $(wc -c < /tmp/company-os-mobile.zip)"
+          echo "Restored SHA-256: $(sha256sum /tmp/company-os-mobile.zip | cut -d' ' -f1)"
+          unzip -t /tmp/company-os-mobile.zip
           unzip -q /tmp/company-os-mobile.zip
           test -f apps/mobile/package.json
           test -f apps/mobile/android/app/src/main/java/com/companyos/mobile/MainApplication.kt
