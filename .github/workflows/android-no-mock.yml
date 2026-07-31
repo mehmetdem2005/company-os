@@ -1,0 +1,144 @@
+name: Android No-Mock APK
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "source/no-mock-overlay/**"
+      - "patches/no-mock/**"
+      - ".github/workflows/android-no-mock.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-no-mock-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore verified base source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat \
+            source/mobile.zip.b64.part00 \
+            source/mobile.zip.b64.part01 \
+            source/mobile.zip.b64.part02a \
+            source/mobile.zip.b64.part02b \
+            source/mobile.zip.b64.part03 \
+            source/mobile.zip.b64.part04 \
+            source/mobile.zip.b64.part05 \
+            source/mobile.zip.b64.part06a \
+            source/mobile.zip.b64.part06b \
+            source/mobile.zip.b64.part07 \
+            source/mobile.zip.b64.part08 \
+            source/mobile.zip.b64.part09 \
+            source/mobile.zip.b64.part10 \
+            source/mobile.zip.b64.part11 \
+            | base64 --decode > /tmp/company-os-mobile.zip
+          echo "c72794030cc312fe8d6f8d01e5b021f6427b7200ba41b08ef7511508ddf2a8df  /tmp/company-os-mobile.zip" | sha256sum -c -
+          unzip -t /tmp/company-os-mobile.zip
+          unzip -q /tmp/company-os-mobile.zip
+
+      - name: Apply verified real-data overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat source/no-mock-overlay/mobile-overlay.zip.b64.part* | base64 --decode > /tmp/no-mock-overlay.zip
+          echo "fc112ad682df00662d0996dbc610cedd36b4394d742e77edff845218547c4ce9  /tmp/no-mock-overlay.zip" | sha256sum -c -
+          unzip -t /tmp/no-mock-overlay.zip
+          unzip -qo /tmp/no-mock-overlay.zip
+          patch -p1 < patches/no-mock/live-screens-filter.patch
+          patch -p1 < patches/no-mock/godot-host-package.patch
+          rm -f \
+            apps/mobile/src/features/dashboard/DashboardScreens.tsx \
+            apps/mobile/src/features/organization/OrganizationScreens.tsx \
+            apps/mobile/src/features/tasks/TaskScreens.tsx \
+            apps/mobile/src/features/chat/ChatScreens.tsx \
+            apps/mobile/src/features/policies/PolicyScreens.tsx \
+            apps/mobile/src/features/workspace/WorkspaceScreens.tsx \
+            apps/mobile/src/features/godot/GodotScreens.tsx \
+            apps/mobile/src/features/operations/OperationsScreens.tsx
+          cat > apps/mobile/tsconfig.json <<'JSON'
+          {
+            "compilerOptions": {
+              "target": "ES2022",
+              "lib": ["ES2022"],
+              "module": "ESNext",
+              "moduleResolution": "Bundler",
+              "jsx": "react-jsx",
+              "strict": true,
+              "noUncheckedIndexedAccess": true,
+              "exactOptionalPropertyTypes": false,
+              "skipLibCheck": true,
+              "esModuleInterop": true,
+              "allowSyntheticDefaultImports": true,
+              "resolveJsonModule": true,
+              "noEmit": true,
+              "types": ["react", "react-native"]
+            },
+            "include": ["src/**/*.ts", "src/**/*.tsx"],
+            "exclude": ["node_modules", "android"]
+          }
+          JSON
+          test -f apps/mobile/src/core/supabase/SupabaseClient.ts
+          test -f apps/mobile/android/app/src/main/java/com/companyos/godot/CompanyConfigModule.kt
+          ! grep -RInE 'Demo çalışma alanını aç|TASK-[0-9]+|Godot Mobile Alpha|BUILD #[0-9]+|POL-[0-9]+' apps/mobile/src
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.14.3
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android platform packages
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;27.1.12297006"
+
+      - name: Install and typecheck
+        working-directory: apps/mobile
+        run: |
+          npm install --no-audit --no-fund
+          npm run typecheck
+
+      - name: Create signing key
+        working-directory: apps/mobile/android/app
+        shell: bash
+        run: |
+          rm -f debug.keystore
+          keytool -genkeypair -v -storetype PKCS12 -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Company OS,C=TR"
+
+      - name: Build release APK
+        run: gradle -p apps/mobile/android :app:assembleRelease --stacktrace --no-daemon
+
+      - name: Verify APK
+        shell: bash
+        run: |
+          APK="apps/mobile/android/app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          unzip -t "$APK" >/dev/null
+          sha256sum "$APK" | tee "$APK.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: company-os-no-mock
+          path: |
+            apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+            apps/mobile/android/app/build/outputs/apk/release/app-release.apk.sha256
+          if-no-files-found: error
+          retention-days: 14
