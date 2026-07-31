@@ -162,10 +162,12 @@ jobs:
           gradle-version: 8.14.3
       - uses: android-actions/setup-android@v3
 
-      - name: Install and verify control plane
+      - name: Install mobile toolchain and verify control plane
         shell: bash
         run: |
-          npm install --no-audit --no-fund --ignore-scripts --workspaces=false
+          set -euo pipefail
+          npm --prefix apps/mobile install --no-audit --no-fund
+          export PATH="$PWD/apps/mobile/node_modules/.bin:$PATH"
           npm run check
 
       - name: Install Android platform packages
@@ -174,11 +176,9 @@ jobs:
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;27.1.12297006"
 
-      - name: Install and typecheck mobile
+      - name: Typecheck mobile
         working-directory: apps/mobile
-        run: |
-          npm install --no-audit --no-fund
-          npm run typecheck
+        run: npm run typecheck
 
       - name: Create signing key
         working-directory: apps/mobile/android/app
