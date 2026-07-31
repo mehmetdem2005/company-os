@@ -166,16 +166,32 @@ jobs:
         working-directory: apps/mobile
         run: npm install --no-audit --no-fund
 
-      - name: Verify production control plane
+      - name: Locate TypeScript compiler
         shell: bash
         run: |
           set -euo pipefail
-          export PATH="$PWD/node_modules/.bin:$PWD/apps/mobile/node_modules/.bin:$PATH"
-          tsc -p tsconfig.core.json --noEmit
+          TSC_JS="$(find "$PWD" -path '*/node_modules/typescript/bin/tsc' -type f -print -quit)"
+          test -n "$TSC_JS"
+          echo "TSC_JS=$TSC_JS" >> "$GITHUB_ENV"
+          node "$TSC_JS" --version
+
+      - name: Typecheck production control plane
+        shell: bash
+        run: node "$TSC_JS" -p tsconfig.core.json --noEmit
+
+      - name: Build production control plane
+        shell: bash
+        run: |
           rm -rf dist
-          tsc -p tsconfig.core.json
-          node --test tests/*.test.mjs
-          node scripts/architecture-check.mjs
+          node "$TSC_JS" -p tsconfig.core.json
+
+      - name: Run production control-plane tests
+        shell: bash
+        run: node --test tests/*.test.mjs
+
+      - name: Enforce architecture boundaries
+        shell: bash
+        run: node scripts/architecture-check.mjs
 
       - name: Install Android platform packages
         shell: bash
