@@ -1,0 +1,11 @@
+--- a/apps/mobile/src/features/live/LiveScreens.tsx
++++ b/apps/mobile/src/features/live/LiveScreens.tsx
+@@ -14,7 +14,7 @@
+   'organization-tree':{table:'departments',title:'Departmanlar',empty:'Organizasyon sürümünde departman bulunmuyor.'},
+   'people-agents':{table:'actors',title:'İnsanlar ve ajanlar',empty:'Actor kaydı bulunmuyor.'},
+   'task-board':{table:'tasks',title:'Görevler',empty:'Görev tablosu boş.'},
+-  'task-detail':{table:'tasks',title:'Görev ayrıntısı',empty:'Seçili görev bulunmuyor.',filter:s=>s.selectedTaskId?{id:`eq.${s.selectedTaskId}`}:{limit:'1'}},
++  'task-detail':{table:'tasks',title:'Görev ayrıntısı',empty:'Seçili görev bulunmuyor.',filter:(s):Record<string,string>=>s.selectedTaskId?{id:`eq.${s.selectedTaskId}`}:{limit:'1'}},
+   'policy-center':{table:'policy_documents',title:'Politikalar',empty:'Politika belgesi bulunmuyor.'},
+   'policy-viewer':{table:'policy_versions',title:'Politika sürümleri',empty:'Politika sürümü bulunmuyor.'},
+   'file-explorer':{table:'workspace_files',title:'Çalışma alanı dosyaları',empty:'Workspace dosya indeksi boş.'},
