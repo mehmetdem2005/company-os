@@ -76,11 +76,15 @@ jobs:
             source/control-plane-v3/overlay.zip.b64.part00 \
             source/control-plane-v3/overlay.zip.b64.part01a \
             source/control-plane-v3/overlay.zip.b64.part01b \
-            source/control-plane-v3/overlay.zip.b64.part01c \
+            source/control-plane-v3/overlay.zip.b64.part01c0 \
+            source/control-plane-v3/overlay.zip.b64.part01c1 \
+            source/control-plane-v3/overlay.zip.b64.part01c2 \
             source/control-plane-v3/overlay.zip.b64.part02a \
             source/control-plane-v3/overlay.zip.b64.part02b \
             source/control-plane-v3/overlay.zip.b64.part02c \
-            source/control-plane-v3/overlay.zip.b64.part03 \
+            source/control-plane-v3/overlay.zip.b64.part030 \
+            source/control-plane-v3/overlay.zip.b64.part031 \
+            source/control-plane-v3/overlay.zip.b64.part032 \
             | base64 --decode > /tmp/control-plane-v3.zip
           echo "704ba373f44c1913a76886a6306c2f68871eac6894fd3a925ea1dbcd07364dda  /tmp/control-plane-v3.zip" | sha256sum -c -
           unzip -t /tmp/control-plane-v3.zip
