@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "source/control-plane-v3/**"
+      - "source/control-plane-core-missing-v1/**"
       - ".github/workflows/android-production-control-plane-v2.yml"
 
 permissions:
@@ -98,6 +99,24 @@ jobs:
           echo "704ba373f44c1913a76886a6306c2f68871eac6894fd3a925ea1dbcd07364dda  /tmp/control-plane-v3.zip" | sha256sum -c -
           unzip -t /tmp/control-plane-v3.zip
           unzip -qo /tmp/control-plane-v3.zip
+
+      - name: Restore complete control-plane core
+        shell: bash
+        run: |
+          set -euo pipefail
+          parts=(source/control-plane-core-missing-v1/archive.tar.xz.b64.part*)
+          test "${#parts[@]}" -eq 9
+          cat "${parts[@]}" | base64 --decode > /tmp/control-plane-core-missing.tar.xz
+          xz --test /tmp/control-plane-core-missing.tar.xz
+          tar -xJf /tmp/control-plane-core-missing.tar.xz -C .
+          test -f tsconfig.base.json
+          test -f tsconfig.core.json
+          test -f apps/control-plane/src/CompanyRuntime.ts
+          test -f packages/contracts/src/index.ts
+          test -f packages/persistence/src/index.ts
+          test -f scripts/architecture-check.mjs
+          test -n "$(find tests -maxdepth 1 -name '*.test.mjs' -print -quit)"
+
           cat > apps/mobile/tsconfig.json <<'JSON'
           {
             "compilerOptions": {
@@ -221,8 +240,6 @@ jobs:
           test -s "$APK"
           unzip -t "$APK" >/dev/null
           sha256sum "$APK" | tee "$APK.sha256"
-          rm -rf dist node_modules apps/mobile/node_modules apps/mobile/android/.gradle apps/mobile/android/build
-          rm -f apps/mobile/android/app/debug.keystore
           zip -qr /tmp/company-os-production-control-plane-source.zip . \
             -x '.git/*' '*/node_modules/*' '*/build/*' 'dist/*'
           unzip -t /tmp/company-os-production-control-plane-source.zip >/dev/null
