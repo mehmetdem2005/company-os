@@ -74,7 +74,9 @@ jobs:
           set -euo pipefail
           cat \
             source/control-plane-v3/overlay.zip.b64.part00 \
-            source/control-plane-v3/overlay.zip.b64.part01 \
+            source/control-plane-v3/overlay.zip.b64.part01a \
+            source/control-plane-v3/overlay.zip.b64.part01b \
+            source/control-plane-v3/overlay.zip.b64.part01c \
             source/control-plane-v3/overlay.zip.b64.part02a \
             source/control-plane-v3/overlay.zip.b64.part02b \
             source/control-plane-v3/overlay.zip.b64.part02c \
