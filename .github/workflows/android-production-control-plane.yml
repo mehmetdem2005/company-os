@@ -72,7 +72,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat source/control-plane-v3/overlay.zip.b64.part* | base64 --decode > /tmp/control-plane-v3.zip
+          cat \
+            source/control-plane-v3/overlay.zip.b64.part00 \
+            source/control-plane-v3/overlay.zip.b64.part01 \
+            source/control-plane-v3/overlay.zip.b64.part02a \
+            source/control-plane-v3/overlay.zip.b64.part02b \
+            source/control-plane-v3/overlay.zip.b64.part02c \
+            source/control-plane-v3/overlay.zip.b64.part03 \
+            | base64 --decode > /tmp/control-plane-v3.zip
           echo "704ba373f44c1913a76886a6306c2f68871eac6894fd3a925ea1dbcd07364dda  /tmp/control-plane-v3.zip" | sha256sum -c -
           unzip -t /tmp/control-plane-v3.zip
           unzip -qo /tmp/control-plane-v3.zip
