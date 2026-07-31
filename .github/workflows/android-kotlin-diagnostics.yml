@@ -5,6 +5,7 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - "source/control-plane-v3/**"
       - "source/production-ui-primitives-v1/**"
       - "source/staged-control-plane-core-v2/**"
       - ".github/workflows/android-kotlin-diagnostics.yml"
@@ -15,7 +16,7 @@ permissions:
 jobs:
   diagnose:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
 
@@ -58,6 +59,38 @@ jobs:
             apps/mobile/src/features/workspace/WorkspaceScreens.tsx \
             apps/mobile/src/features/godot/GodotScreens.tsx \
             apps/mobile/src/features/operations/OperationsScreens.tsx
+
+      - name: Apply exact production control-plane workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat source/database/company-os-schema.zip.b64.part* | base64 --decode > /tmp/schema.zip
+          echo "62faa0469b86f20f03b49c2235a7c5d07dfb46b88f67a58a57e668dfc6375045  /tmp/schema.zip" | sha256sum -c -
+          unzip -qo /tmp/schema.zip
+
+          cat \
+            source/control-plane-v3/overlay.zip.b64.part00 \
+            source/control-plane-v3/overlay.zip.b64.part01a \
+            source/control-plane-v3/overlay.zip.b64.part01b \
+            source/control-plane-v3/overlay.zip.b64.part01c0 \
+            source/control-plane-v3/overlay.zip.b64.part01c1 \
+            source/control-plane-v3/overlay.zip.b64.part01c2 \
+            source/control-plane-v3/overlay.zip.b64.part02a \
+            source/control-plane-v3/overlay.zip.b64.part02b \
+            source/control-plane-v3/overlay.zip.b64.part02c \
+            source/control-plane-v3/overlay.zip.b64.part030 \
+            source/control-plane-v3/overlay.zip.b64.part031 \
+            source/control-plane-v3/overlay.zip.b64.part032 \
+            | base64 --decode > /tmp/control.zip
+          echo "704ba373f44c1913a76886a6306c2f68871eac6894fd3a925ea1dbcd07364dda  /tmp/control.zip" | sha256sum -c -
+          unzip -qo /tmp/control.zip
+
+          parts=(source/staged-control-plane-core-v2/archive.tar.xz.b64.part*)
+          test "${#parts[@]}" -eq 9
+          cat "${parts[@]}" | base64 --decode > /tmp/core.tar.xz
+          echo "dc844d22af5e0a2b0c028c1f49a65688114abaedef0bfdf4ea1b5ef90632d312  /tmp/core.tar.xz" | sha256sum -c -
+          xz --test /tmp/core.tar.xz
+          tar -xJf /tmp/core.tar.xz -C .
 
       - uses: actions/setup-node@v4
         with:
@@ -104,7 +137,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: android-kotlin-build-diagnostics
+          name: android-kotlin-production-build-diagnostics
           path: /tmp/android-kotlin-build.log
           if-no-files-found: error
           retention-days: 3
