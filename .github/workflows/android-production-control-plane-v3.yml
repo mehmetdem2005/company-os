@@ -1,0 +1,229 @@
+name: Android Production Control Plane V3
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "source/control-plane-v3/**"
+      - "source/staged-control-plane-core-v2/**"
+      - "source/production-ui-primitives-v1/**"
+      - ".github/workflows/android-production-control-plane-v3.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-production-control-plane-v3-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore verified mobile source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat \
+            source/mobile.zip.b64.part00 source/mobile.zip.b64.part01 \
+            source/mobile.zip.b64.part02a source/mobile.zip.b64.part02b \
+            source/mobile.zip.b64.part03 source/mobile.zip.b64.part04 \
+            source/mobile.zip.b64.part05 source/mobile.zip.b64.part06a \
+            source/mobile.zip.b64.part06b source/mobile.zip.b64.part07 \
+            source/mobile.zip.b64.part08 source/mobile.zip.b64.part09 \
+            source/mobile.zip.b64.part10 source/mobile.zip.b64.part11 \
+            | base64 --decode > /tmp/mobile.zip
+          echo "c72794030cc312fe8d6f8d01e5b021f6427b7200ba41b08ef7511508ddf2a8df  /tmp/mobile.zip" | sha256sum -c -
+          unzip -t /tmp/mobile.zip >/dev/null
+          unzip -q /tmp/mobile.zip
+
+          cat source/no-mock-overlay/mobile-overlay.zip.b64.part* | base64 --decode > /tmp/no-mock.zip
+          echo "fc112ad682df00662d0996dbc610cedd36b4394d742e77edff845218547c4ce9  /tmp/no-mock.zip" | sha256sum -c -
+          unzip -t /tmp/no-mock.zip >/dev/null
+          unzip -qo /tmp/no-mock.zip
+          patch -p1 < patches/no-mock/live-screens-filter.patch
+          patch -p1 < patches/no-mock/godot-host-package.patch
+
+          cat source/live-runtime-v2/mobile-overlay.zip.b64.part* | base64 --decode > /tmp/live.zip
+          echo "fe254e84d6177bdeb6d2e04dd2b2761c7d72590b45dea38a917e3b5ac6bb7499  /tmp/live.zip" | sha256sum -c -
+          unzip -t /tmp/live.zip >/dev/null
+          unzip -qo /tmp/live.zip
+
+          cat source/production-ui-primitives-v1/overlay.zip.b64 | base64 --decode > /tmp/ui-primitives.zip
+          echo "84d36210059562dd67c9f427084a4fbb0b872bea8ccd61cd3aedb0eebceeceb1  /tmp/ui-primitives.zip" | sha256sum -c -
+          unzip -t /tmp/ui-primitives.zip >/dev/null
+          unzip -qo /tmp/ui-primitives.zip
+          test "$(wc -l < apps/mobile/src/components/primitives.tsx)" -le 360
+
+          rm -f \
+            apps/mobile/src/features/dashboard/DashboardScreens.tsx \
+            apps/mobile/src/features/organization/OrganizationScreens.tsx \
+            apps/mobile/src/features/tasks/TaskScreens.tsx \
+            apps/mobile/src/features/chat/ChatScreens.tsx \
+            apps/mobile/src/features/policies/PolicyScreens.tsx \
+            apps/mobile/src/features/workspace/WorkspaceScreens.tsx \
+            apps/mobile/src/features/godot/GodotScreens.tsx \
+            apps/mobile/src/features/operations/OperationsScreens.tsx
+
+      - name: Restore production schema and control plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat source/database/company-os-schema.zip.b64.part* | base64 --decode > /tmp/schema.zip
+          echo "62faa0469b86f20f03b49c2235a7c5d07dfb46b88f67a58a57e668dfc6375045  /tmp/schema.zip" | sha256sum -c -
+          unzip -t /tmp/schema.zip >/dev/null
+          unzip -qo /tmp/schema.zip
+
+          cat \
+            source/control-plane-v3/overlay.zip.b64.part00 \
+            source/control-plane-v3/overlay.zip.b64.part01a \
+            source/control-plane-v3/overlay.zip.b64.part01b \
+            source/control-plane-v3/overlay.zip.b64.part01c0 \
+            source/control-plane-v3/overlay.zip.b64.part01c1 \
+            source/control-plane-v3/overlay.zip.b64.part01c2 \
+            source/control-plane-v3/overlay.zip.b64.part02a \
+            source/control-plane-v3/overlay.zip.b64.part02b \
+            source/control-plane-v3/overlay.zip.b64.part02c \
+            source/control-plane-v3/overlay.zip.b64.part030 \
+            source/control-plane-v3/overlay.zip.b64.part031 \
+            source/control-plane-v3/overlay.zip.b64.part032 \
+            | base64 --decode > /tmp/control.zip
+          echo "704ba373f44c1913a76886a6306c2f68871eac6894fd3a925ea1dbcd07364dda  /tmp/control.zip" | sha256sum -c -
+          unzip -t /tmp/control.zip >/dev/null
+          unzip -qo /tmp/control.zip
+
+          parts=(source/staged-control-plane-core-v2/archive.tar.xz.b64.part*)
+          test "${#parts[@]}" -eq 9
+          cat "${parts[@]}" | base64 --decode > /tmp/core.tar.xz
+          echo "dc844d22af5e0a2b0c028c1f49a65688114abaedef0bfdf4ea1b5ef90632d312  /tmp/core.tar.xz" | sha256sum -c -
+          xz --test /tmp/core.tar.xz
+          test "$(tar -tJf /tmp/core.tar.xz | grep -cE '(^|/)')" -eq 47
+          tar -xJf /tmp/core.tar.xz -C .
+
+          test -f tsconfig.base.json
+          test -f tsconfig.core.json
+          test -f apps/control-plane/src/CompanyRuntime.ts
+          test -f packages/contracts/src/index.ts
+          test -f packages/persistence/src/index.ts
+          test -f scripts/architecture-check.mjs
+
+      - name: Enforce real-data contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -RInE 'Demo çalışma alanını aç|TASK-[0-9]+|Godot Mobile Alpha|BUILD #[0-9]+|POL-[0-9]+' apps/mobile/src apps/control-plane/src packages
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          live = Path('apps/mobile/src/features/live/LiveScreens.tsx').read_text()
+          schema = '\n'.join(p.read_text().lower() for p in sorted(Path('supabase/migrations').glob('*.sql')))
+          tables = set(re.findall(r"table:\s*'([a-z_]+)'", live))
+          tables.update(re.findall(r"useLiveRows\('([a-z_]+)'", live))
+          missing = sorted(t for t in tables if f'create table public.{t}' not in schema and f'create table if not exists public.{t}' not in schema)
+          if missing:
+              raise SystemExit(f'Missing real tables: {missing}')
+          required = ('bootstrap_workspace','apply_organization_plan','acquire_project_execution_lease','release_project_execution_lease','project_execution_leases','supabase_realtime')
+          absent = [x for x in required if x not in schema]
+          if absent:
+              raise SystemExit(f'Missing runtime capabilities: {absent}')
+          print('Real-data contract validated for', len(tables), 'tables')
+          PY
+
+          cat > apps/mobile/tsconfig.json <<'JSON'
+          {
+            "compilerOptions": {
+              "target": "ES2022",
+              "lib": ["ES2022"],
+              "module": "ESNext",
+              "moduleResolution": "Bundler",
+              "jsx": "react-jsx",
+              "strict": true,
+              "noUncheckedIndexedAccess": true,
+              "exactOptionalPropertyTypes": false,
+              "skipLibCheck": true,
+              "esModuleInterop": true,
+              "allowSyntheticDefaultImports": true,
+              "resolveJsonModule": true,
+              "noEmit": true,
+              "types": ["react", "react-native"]
+            },
+            "include": ["src/**/*.ts", "src/**/*.tsx"],
+            "exclude": ["node_modules", "android"]
+          }
+          JSON
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.14.3
+      - uses: android-actions/setup-android@v3
+
+      - name: Install toolchain
+        working-directory: apps/mobile
+        run: npm install --no-audit --no-fund
+
+      - name: Verify control plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          TSC_JS="$(find "$PWD" -path '*/node_modules/typescript/bin/tsc' -type f -print -quit)"
+          test -n "$TSC_JS"
+          node "$TSC_JS" -p tsconfig.core.json --noEmit
+          rm -rf dist
+          node "$TSC_JS" -p tsconfig.core.json
+          node --test tests/*.test.mjs
+          node scripts/architecture-check.mjs
+
+      - name: Verify mobile and Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;27.1.12297006"
+          cd apps/mobile
+          npm run typecheck
+
+      - name: Build signed release APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f apps/mobile/android/app/debug.keystore
+          keytool -genkeypair -v -storetype PKCS12 \
+            -keystore apps/mobile/android/app/debug.keystore \
+            -storepass android -alias androiddebugkey -keypass android \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Company OS,C=TR"
+          gradle -p apps/mobile/android :app:assembleRelease --stacktrace --no-daemon
+
+      - name: Verify release output
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+          test -s "$APK"
+          unzip -t "$APK" >/dev/null
+          sha256sum "$APK" | tee "$APK.sha256"
+          zip -qr /tmp/company-os-production-source.zip . -x '.git/*' '*/node_modules/*' '*/build/*' 'dist/*'
+          unzip -t /tmp/company-os-production-source.zip >/dev/null
+          sha256sum /tmp/company-os-production-source.zip > /tmp/company-os-production-source.zip.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: company-os-production-v3
+          path: |
+            apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+            apps/mobile/android/app/build/outputs/apk/release/app-release.apk.sha256
+            /tmp/company-os-production-source.zip
+            /tmp/company-os-production-source.zip.sha256
+          if-no-files-found: error
+          retention-days: 14

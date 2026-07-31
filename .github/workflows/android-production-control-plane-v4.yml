@@ -1,0 +1,55 @@
+name: Android Production Control Plane V4
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "source/control-plane-v3/**"
+      - "source/staged-control-plane-core-v2/**"
+      - "source/production-ui-primitives-v1/**"
+      - "patches/no-mock/**"
+      - "scripts/ci/build-production-v4.sh"
+      - ".github/workflows/android-production-control-plane-v4.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-production-control-plane-v4-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.14.3
+      - uses: android-actions/setup-android@v3
+
+      - name: Build and verify no-mock production release
+        shell: bash
+        run: bash scripts/ci/build-production-v4.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: company-os-production-v4
+          path: |
+            apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+            apps/mobile/android/app/build/outputs/apk/release/app-release.apk.sha256
+            /tmp/company-os-production-v4-source.zip
+            /tmp/company-os-production-v4-source.zip.sha256
+            supabase/migrations/0005_runtime_control_plane.sql
+            supabase/migrations/0006_project_execution_leases.sql
+          if-no-files-found: error
+          retention-days: 14

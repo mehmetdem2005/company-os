@@ -1,0 +1,2 @@
+Godot runner source boundary documented at godot/README.md.
+The V3 release restores the SHA-locked core and emits the live mobile component contracts before final TypeScript verification.

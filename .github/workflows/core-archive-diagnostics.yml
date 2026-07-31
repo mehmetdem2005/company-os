@@ -1,0 +1,39 @@
+name: Control Plane Core Archive Diagnostics
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "source/control-plane-core-missing-v1/**"
+      - ".github/workflows/core-archive-diagnostics.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate every encoded part
+        shell: bash
+        run: |
+          set -euo pipefail
+          parts=(source/control-plane-core-missing-v1/archive.tar.xz.b64.part*)
+          test "${#parts[@]}" -eq 9
+          for part in "${parts[@]}"; do
+            printf '%s bytes=' "$part"
+            wc -c < "$part"
+            base64 --decode "$part" > /dev/null
+          done
+      - name: Validate reconstructed archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat source/control-plane-core-missing-v1/archive.tar.xz.b64.part* | base64 --decode > /tmp/core.tar.xz
+          xz --test /tmp/core.tar.xz
+          tar -tJf /tmp/core.tar.xz > /tmp/core-files.txt
+          wc -l /tmp/core-files.txt
+          grep -Fx 'tsconfig.base.json' /tmp/core-files.txt
+          grep -Fx 'apps/control-plane/src/CompanyRuntime.ts' /tmp/core-files.txt
