@@ -170,11 +170,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          export PATH="$PWD/apps/mobile/node_modules/.bin:$PATH"
+          export PATH="$PWD/node_modules/.bin:$PWD/apps/mobile/node_modules/.bin:$PATH"
           tsc -p tsconfig.core.json --noEmit
           rm -rf dist
           tsc -p tsconfig.core.json
-          node --test tests/**/*.test.mjs
+          node --test tests/*.test.mjs
           node scripts/architecture-check.mjs
 
       - name: Install Android platform packages
@@ -192,7 +192,7 @@ jobs:
         shell: bash
         run: |
           rm -f debug.keystore
-          keytool -genkeypair -v -storetype PKCS12 -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Company OS,C=TR"
+          keytool -genkeypair -v -storetype PKCS12 -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Company OS,C=TR"
 
       - name: Build release APK
         run: gradle -p apps/mobile/android :app:assembleRelease --stacktrace --no-daemon
