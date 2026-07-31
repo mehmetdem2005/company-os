@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "source/no-mock-overlay/**"
+      - "patches/no-mock/**"
       - ".github/workflows/android-no-mock.yml"
 
 permissions:
@@ -54,6 +55,7 @@ jobs:
           echo "fc112ad682df00662d0996dbc610cedd36b4394d742e77edff845218547c4ce9  /tmp/no-mock-overlay.zip" | sha256sum -c -
           unzip -t /tmp/no-mock-overlay.zip
           unzip -qo /tmp/no-mock-overlay.zip
+          patch -p1 < patches/no-mock/live-screens-filter.patch
           rm -f \
             apps/mobile/src/features/dashboard/DashboardScreens.tsx \
             apps/mobile/src/features/organization/OrganizationScreens.tsx \
