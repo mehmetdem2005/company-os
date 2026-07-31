@@ -1,0 +1,100 @@
+name: Control Plane Typecheck Diagnostics
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "source/control-plane-v3/**"
+      - ".github/workflows/control-plane-typecheck-diagnostics.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reconstruct verified source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat \
+            source/mobile.zip.b64.part00 \
+            source/mobile.zip.b64.part01 \
+            source/mobile.zip.b64.part02a \
+            source/mobile.zip.b64.part02b \
+            source/mobile.zip.b64.part03 \
+            source/mobile.zip.b64.part04 \
+            source/mobile.zip.b64.part05 \
+            source/mobile.zip.b64.part06a \
+            source/mobile.zip.b64.part06b \
+            source/mobile.zip.b64.part07 \
+            source/mobile.zip.b64.part08 \
+            source/mobile.zip.b64.part09 \
+            source/mobile.zip.b64.part10 \
+            source/mobile.zip.b64.part11 \
+            | base64 --decode > /tmp/mobile.zip
+          echo "c72794030cc312fe8d6f8d01e5b021f6427b7200ba41b08ef7511508ddf2a8df  /tmp/mobile.zip" | sha256sum -c -
+          unzip -q /tmp/mobile.zip
+
+          cat source/no-mock-overlay/mobile-overlay.zip.b64.part* | base64 --decode > /tmp/no-mock.zip
+          echo "fc112ad682df00662d0996dbc610cedd36b4394d742e77edff845218547c4ce9  /tmp/no-mock.zip" | sha256sum -c -
+          unzip -qo /tmp/no-mock.zip
+          patch -p1 < patches/no-mock/live-screens-filter.patch
+          patch -p1 < patches/no-mock/godot-host-package.patch
+
+          cat source/live-runtime-v2/mobile-overlay.zip.b64.part* | base64 --decode > /tmp/live.zip
+          echo "fe254e84d6177bdeb6d2e04dd2b2761c7d72590b45dea38a917e3b5ac6bb7499  /tmp/live.zip" | sha256sum -c -
+          unzip -qo /tmp/live.zip
+
+          cat \
+            source/control-plane-v3/overlay.zip.b64.part00 \
+            source/control-plane-v3/overlay.zip.b64.part01a \
+            source/control-plane-v3/overlay.zip.b64.part01b \
+            source/control-plane-v3/overlay.zip.b64.part01c0 \
+            source/control-plane-v3/overlay.zip.b64.part01c1 \
+            source/control-plane-v3/overlay.zip.b64.part01c2 \
+            source/control-plane-v3/overlay.zip.b64.part02a \
+            source/control-plane-v3/overlay.zip.b64.part02b \
+            source/control-plane-v3/overlay.zip.b64.part02c \
+            source/control-plane-v3/overlay.zip.b64.part030 \
+            source/control-plane-v3/overlay.zip.b64.part031 \
+            source/control-plane-v3/overlay.zip.b64.part032 \
+            | base64 --decode > /tmp/control.zip
+          echo "704ba373f44c1913a76886a6306c2f68871eac6894fd3a925ea1dbcd07364dda  /tmp/control.zip" | sha256sum -c -
+          unzip -qo /tmp/control.zip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+
+      - name: Install compiler
+        working-directory: apps/mobile
+        run: npm install --no-audit --no-fund
+
+      - name: Capture diagnostics
+        id: typecheck
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          TSC_JS="$(find "$PWD" -path '*/node_modules/typescript/bin/tsc' -type f -print -quit)"
+          echo "TypeScript: $TSC_JS" | tee /tmp/control-plane-typecheck.log
+          node "$TSC_JS" --version 2>&1 | tee -a /tmp/control-plane-typecheck.log
+          node "$TSC_JS" -p tsconfig.core.json --noEmit 2>&1 | tee -a /tmp/control-plane-typecheck.log
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: control-plane-typecheck-diagnostics
+          path: /tmp/control-plane-typecheck.log
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Fail when typecheck failed
+        if: steps.typecheck.outcome == 'failure'
+        run: exit 1
