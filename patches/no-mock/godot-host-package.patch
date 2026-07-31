@@ -11,7 +11,7 @@
      }
 --- a/apps/mobile/android/settings.gradle
 +++ b/apps/mobile/android/settings.gradle
-@@ -1,7 +1,18 @@
+@@ -1,8 +1,18 @@
 -pluginManagement { includeBuild("../node_modules/@react-native/gradle-plugin") }
 +pluginManagement {
 +    def localPlugin = file("../node_modules/@react-native/gradle-plugin")
