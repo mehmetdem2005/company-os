@@ -68,6 +68,15 @@ jobs:
             apps/mobile/src/features/godot/GodotScreens.tsx \
             apps/mobile/src/features/operations/OperationsScreens.tsx
 
+      - name: Restore verified production database schema
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat source/database/company-os-schema.zip.b64.part* | base64 --decode > /tmp/company-os-schema.zip
+          echo "62faa0469b86f20f03b49c2235a7c5d07dfb46b88f67a58a57e668dfc6375045  /tmp/company-os-schema.zip" | sha256sum -c -
+          unzip -t /tmp/company-os-schema.zip
+          unzip -qo /tmp/company-os-schema.zip
+
       - name: Apply verified production control-plane overlay
         shell: bash
         run: |
@@ -117,7 +126,6 @@ jobs:
         run: |
           set -euo pipefail
           ! grep -RInE 'Demo çalışma alanını aç|TASK-[0-9]+|Godot Mobile Alpha|BUILD #[0-9]+|POL-[0-9]+' apps/mobile/src apps/control-plane/src packages
-          test ! -f supabase/migrations/0001_company_os.sql
           python - <<'PY'
           import re
           from pathlib import Path
