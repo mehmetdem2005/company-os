@@ -1,0 +1,6 @@
+Company OS production release: V4
+Core archive SHA-256: dc844d22af5e0a2b0c028c1f49a65688114abaedef0bfdf4ea1b5ef90632d312
+Mobile install mode: npm --workspaces=false
+Data policy: no mock or demo records
+Temporary UI contract diagnostics: removed
+Canonical workflow: Android Production Control Plane V4
