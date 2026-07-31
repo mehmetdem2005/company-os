@@ -109,7 +109,8 @@ jobs:
         run: |
           set -euo pipefail
           cd apps/mobile
-          npm install --no-audit --no-fund
+          npm install --workspaces=false --no-audit --no-fund
+          test -d node_modules/@react-native/gradle-plugin
           cd ../..
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;27.1.12297006"
