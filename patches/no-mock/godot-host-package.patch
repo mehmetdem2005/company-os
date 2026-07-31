@@ -1,0 +1,11 @@
+--- a/apps/mobile/android/app/src/main/java/com/companyos/godot/GodotHostPackage.kt
++++ b/apps/mobile/android/app/src/main/java/com/companyos/godot/GodotHostPackage.kt
+@@ -7,7 +7,7 @@
+ class GodotHostPackage : ReactPackage {
+     override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
+         return listOf(
+-            GodotHostModule(reactContext, VerifiedSnapshotRuntimeController(reactContext)),
++            GodotHostModule(reactContext, VerifiedSnapshotRuntimeController(reactContext.filesDir)),
+             CompanyConfigModule(reactContext),
+         )
+     }
