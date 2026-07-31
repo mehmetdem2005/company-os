@@ -56,6 +56,7 @@ jobs:
           unzip -t /tmp/no-mock-overlay.zip
           unzip -qo /tmp/no-mock-overlay.zip
           patch -p1 < patches/no-mock/live-screens-filter.patch
+          patch -p1 < patches/no-mock/godot-host-package.patch
           rm -f \
             apps/mobile/src/features/dashboard/DashboardScreens.tsx \
             apps/mobile/src/features/organization/OrganizationScreens.tsx \
