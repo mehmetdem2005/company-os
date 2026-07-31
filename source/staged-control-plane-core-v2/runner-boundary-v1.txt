@@ -1,0 +1,2 @@
+Godot runner source boundary documented at godot/README.md.
+This marker triggers the deterministic V3 production validation without changing the SHA-locked core archive.
