@@ -7,6 +7,7 @@ on:
     paths:
       - "source/control-plane-v3/**"
       - "source/staged-control-plane-core-v2/**"
+      - "source/production-ui-primitives-v1/**"
       - ".github/workflows/android-production-control-plane-v3.yml"
 
 permissions:
@@ -51,6 +52,12 @@ jobs:
           echo "fe254e84d6177bdeb6d2e04dd2b2761c7d72590b45dea38a917e3b5ac6bb7499  /tmp/live.zip" | sha256sum -c -
           unzip -t /tmp/live.zip >/dev/null
           unzip -qo /tmp/live.zip
+
+          cat source/production-ui-primitives-v1/overlay.zip.b64 | base64 --decode > /tmp/ui-primitives.zip
+          echo "84d36210059562dd67c9f427084a4fbb0b872bea8ccd61cd3aedb0eebceeceb1  /tmp/ui-primitives.zip" | sha256sum -c -
+          unzip -t /tmp/ui-primitives.zip >/dev/null
+          unzip -qo /tmp/ui-primitives.zip
+          test "$(wc -l < apps/mobile/src/components/primitives.tsx)" -le 360
 
           rm -f \
             apps/mobile/src/features/dashboard/DashboardScreens.tsx \
